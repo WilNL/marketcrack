@@ -233,7 +233,7 @@ Not "talk to customers" — "interview 15 [specific persona] at [company type] a
 - Quantify risks: not "regulation is a risk" but "GDPR compliance ≈ €40-80k and 4-6 months"
 - End with a decision. Not "it depends."`;
 
-export async function POST(req) {
+export async function POST(req: Request) {
   const { prompt, mode } = await req.json();
 
   if (!prompt) {
