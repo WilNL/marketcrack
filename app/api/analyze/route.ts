@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
 const SYSTEM_PROMPT = `You are a brutally honest senior business analyst — a hybrid of a skeptical VC partner, a McKinsey engagement manager, and a battle-scarred founder who has seen hundreds of ideas fail.
+
 
 Your job is NOT to validate. Your job is to pressure-test.
 
