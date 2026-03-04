@@ -277,7 +277,7 @@ export async function POST(req: Request) {
 
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
-      } catch (err) {
+      } catch (err: any) {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`)
         );
