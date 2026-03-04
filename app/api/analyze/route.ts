@@ -234,65 +234,27 @@ Not "talk to customers" — "interview 15 [specific persona] at [company type] a
 - Every number needs source URL or [ESTIMATE] tag
 - Quantify risks: not "regulation is a risk" but "GDPR compliance ≈ €40-80k and 4-6 months"
 - End with a decision. Not "it depends."`;
-
 export async function POST(req: Request) {
-  const { prompt, mode } = await req.json();
+  const { prompt } = await req.json();
 
   if (!prompt) {
-    return new Response(JSON.stringify({ error: "No prompt provided" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.json({ error: "No prompt provided" }, { status: 400 });
   }
 
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-5",
+    max_tokens: 8000,
+    system: SYSTEM_PROMPT,
+    tools: [{ type: "web_search_20250305", name: "web_search" }] as any,
+    messages: [{ role: "user", content: `Pressure-test this critically:\n\n${prompt}` }],
   });
 
-  const encoder = new TextEncoder();
+  const text = response.content
+    .filter((b: any) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("");
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const anthropicStream = await client.messages.stream({
-          model: "claude-sonnet-4-5",
-          max_tokens: 8000,
-          system: SYSTEM_PROMPT,
-         tools: [{ type: "web_search_20250305", name: "web_search" }] as any,
-          messages: [
-            {
-              role: "user",
-              content: `Pressure-test this critically and thoroughly:\n\n${prompt}`,
-            },
-          ],
-        });
-
-        for await (const event of anthropicStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta?.type === "text_delta"
-          ) {
-            const data = `data: ${JSON.stringify({ text: event.delta.text })}\n\n`;
-            controller.enqueue(encoder.encode(data));
-          }
-        }
-
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-      } catch (err: any) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`)
-        );
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return Response.json({ text });
 }
