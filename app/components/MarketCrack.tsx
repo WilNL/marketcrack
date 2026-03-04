@@ -602,10 +602,9 @@ export default function MarketCrack() {
     if (resultRef.current && streaming)
       resultRef.current.scrollTop = resultRef.current.scrollHeight;
   }, [result, streaming]);
-
-  async function analyze(userPrompt: string) {
+async function analyze(userPrompt: string) {
     setLoading(true);
-    setStreaming(true);
+    setStreaming(false);
     setResult("");
     try {
       const res = await fetch("/api/analyze", {
@@ -613,49 +612,18 @@ export default function MarketCrack() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: userPrompt, mode }),
       });
-
-      const reader = res.body!.getReader();
-      const dec = new TextDecoder();
-      let full = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const line of dec.decode(value).split("\n")) {
-          if (line.startsWith("data: ")) {
-            const raw = line.slice(6);
-            if (raw === "[DONE]") break;
-            try {
-              const d = JSON.parse(raw);
-              if (d.text) {
-                full += d.text;
-                setResult(full);
-              }
-            } catch {}
-          }
-        }
+      const data = await res.json();
+      if (data.text) {
+        setResult(data.text);
+        const label = userPrompt.match(/https?:\/\/[^\s]+/)?.[0] || userPrompt.slice(0, 52) + "…";
+        setHistory((p) => [{ label, result: data.text, mode: mode!, score: parseScore(data.text), verdict: parseVerdict(data.text), signal: parseSignal(data.text) }, ...p.slice(0, 5)]);
       }
-
-      const label =
-        userPrompt.match(/https?:\/\/[^\s]+/)?.[0] ||
-        userPrompt.slice(0, 52) + "…";
-      setHistory((p) => [
-        {
-          label,
-          result: full,
-          mode: mode!,
-          score: parseScore(full),
-          verdict: parseVerdict(full),
-          signal: parseSignal(full),
-        },
-        ...p.slice(0, 5),
-      ]);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-    setStreaming(false);
   }
+  
 
   const score = parseScore(result);
   const verdict = parseVerdict(result);
